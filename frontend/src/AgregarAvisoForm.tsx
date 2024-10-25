@@ -1,83 +1,139 @@
 import React, { useState } from 'react';
-import { TextField, Button, Container, Typography } from '@mui/material';
-import axios from 'axios';
+import { Dialog, DialogActions, DialogContent, DialogTitle, TextField, FormControl, InputLabel, Select, MenuItem, Button, LinearProgress, Typography } from '@mui/material';
+import { useDropzone } from 'react-dropzone';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 interface AgregarAvisoFormProps {
-  onAvisoAgregado: () => void;
+  nuevoAviso: { titulo: string, telefono: string, descripcion: string, categoria: string, etiqueta: string };
+  setNuevoAviso: React.Dispatch<React.SetStateAction<{ titulo: string, telefono: string, descripcion: string, categoria: string, etiqueta: string }>>;
+  agregarAviso: () => void;
+  subiendo: boolean;
+  progreso: number;
+  mostrarFormulario: boolean;
+  setMostrarFormulario: React.Dispatch<React.SetStateAction<boolean>>;
+  imagenes: File[];
+  setImagenes: React.Dispatch<React.SetStateAction<File[]>>;
+  preview: string[];
+  setPreview: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
-const AgregarAvisoForm: React.FC<AgregarAvisoFormProps> = ({ onAvisoAgregado }) => {
-  const [titulo, setTitulo] = useState('');
-  const [telefono, setTelefono] = useState('');
-  const [descripcion, setDescripcion] = useState('');
+const categorias = [
+  'Compra Venta',
+  'Autos, Motos, Otros',
+  'Trabajo y Empleo',
+  'Encuentros',
+  'Comunidad',
+  'Inmuebles',
+  'Servicios',
+  'Otros'
+];
 
-  const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
+const AgregarAvisoForm: React.FC<AgregarAvisoFormProps> = ({ nuevoAviso, setNuevoAviso, agregarAviso, subiendo, progreso, mostrarFormulario, setMostrarFormulario, imagenes, setImagenes, preview, setPreview }) => {
 
-    // Validación básica
-    if (!titulo || !telefono || !descripcion) {
-      alert('Por favor, completa todos los campos.');
-      return;
+  const { getRootProps, getInputProps } = useDropzone({
+    accept: {
+      'image/*': ['.jpeg', '.png', '.jpg']
+    },
+    onDrop: (acceptedFiles) => {
+      setImagenes([...imagenes, ...acceptedFiles]);
+      const previews = acceptedFiles.map((file) => URL.createObjectURL(file));
+      setPreview([...preview, ...previews]);
     }
+  });
 
-    // Enviar datos al backend
-    axios
-      .post('http://localhost:4000/avisos', {
-        titulo,
-        telefono,
-        descripcion,
-      })
-      .then((response) => {
-        console.log('Aviso agregado:', response.data);
-        // Limpiar el formulario
-        setTitulo('');
-        setTelefono('');
-        setDescripcion('');
-        // Notificar al componente padre
-        onAvisoAgregado();
-      })
-      .catch((error) => {
-        console.error('Error al agregar el aviso:', error);
-      });
+  const eliminarImagen = (index: number) => {
+    const nuevasImagenes = [...imagenes];
+    nuevasImagenes.splice(index, 1);
+    setImagenes(nuevasImagenes);
+
+    const nuevasPreviews = [...preview];
+    nuevasPreviews.splice(index, 1);
+    setPreview(nuevasPreviews);
   };
 
   return (
-    <Container maxWidth="sm">
-      <Typography variant="h5" gutterBottom>
-        Agregar Nuevo Aviso
-      </Typography>
-      <form onSubmit={handleSubmit}>
+    <Dialog open={mostrarFormulario} onClose={() => setMostrarFormulario(false)}>
+      <DialogTitle>Agregar Nuevo Aviso</DialogTitle>
+      <DialogContent>
         <TextField
+          autoFocus
+          margin="dense"
           label="Título"
           fullWidth
-          margin="normal"
-          value={titulo}
-          onChange={(e) => setTitulo(e.target.value)}
-          required
+          value={nuevoAviso.titulo}
+          onChange={(e) => setNuevoAviso({ ...nuevoAviso, titulo: e.target.value })}
         />
         <TextField
+          margin="dense"
           label="Teléfono"
           fullWidth
-          margin="normal"
-          value={telefono}
-          onChange={(e) => setTelefono(e.target.value)}
-          required
+          value={nuevoAviso.telefono}
+          onChange={(e) => setNuevoAviso({ ...nuevoAviso, telefono: e.target.value })}
         />
         <TextField
+          margin="dense"
           label="Descripción"
           fullWidth
-          margin="normal"
           multiline
-          rows={4}
-          value={descripcion}
-          onChange={(e) => setDescripcion(e.target.value)}
-          required
+          rows={3}
+          value={nuevoAviso.descripcion}
+          onChange={(e) => setNuevoAviso({ ...nuevoAviso, descripcion: e.target.value })}
         />
-        <Button variant="contained" color="primary" type="submit" style={{ marginTop: '16px' }}>
-          Enviar
+        <FormControl fullWidth margin="dense">
+          <InputLabel>Categoría</InputLabel>
+          <Select
+            value={nuevoAviso.categoria}
+            onChange={(e) => setNuevoAviso({ ...nuevoAviso, categoria: e.target.value as string })}
+          >
+            {categorias.map(categoria => (
+              <MenuItem key={categoria} value={categoria}>
+                {categoria}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <TextField
+          margin="dense"
+          label="Etiqueta (e.g., destacado)"
+          fullWidth
+          value={nuevoAviso.etiqueta}
+          onChange={(e) => setNuevoAviso({ ...nuevoAviso, etiqueta: e.target.value })}
+        />
+
+        {/* Drag-and-drop de imágenes */}
+        <div {...getRootProps({ className: 'dropzone' })} style={{ border: '2px dashed #ccc', padding: '20px', marginTop: '20px', textAlign: 'center' }}>
+          <input {...getInputProps()} />
+          <Typography variant="body1">Arrastra y suelta algunas imágenes aquí, o haz clic para seleccionarlas</Typography>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', marginTop: '20px' }}>
+          {preview.map((src, index) => (
+            <div key={index} style={{ position: 'relative', marginRight: '10px' }}>
+              <img src={src} alt="preview" style={{ width: '100px', height: '100px', objectFit: 'cover' }} />
+              <Button 
+                variant="contained" 
+                color="secondary" 
+                size="small" 
+                onClick={() => eliminarImagen(index)} 
+                style={{ position: 'absolute', bottom: 0, right: 0 }}
+              >
+                <DeleteIcon />
+              </Button>
+            </div>
+          ))}
+        </div>
+
+        {/* Barra de progreso */}
+        {subiendo && <LinearProgress variant="determinate" value={progreso} style={{ marginTop: '20px' }} />}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setMostrarFormulario(false)} color="primary">
+          Cancelar
         </Button>
-      </form>
-    </Container>
+        <Button onClick={agregarAviso} color="primary" disabled={subiendo}>
+          Guardar
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 
