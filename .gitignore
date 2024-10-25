@@ -1,3 +1,5 @@
+# Uploads
+backend/uploads/*
 # Logs
 logs
 *.log
